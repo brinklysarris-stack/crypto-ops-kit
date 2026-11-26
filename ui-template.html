@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crypto Ops Inspector — Multi-Chain, BOLT-11, x402 &amp; UTXO Utility</title>
+<style>
+  :root {
+    --bg: #0e1116; --card: #161b22; --border: #2a323d; --text: #e6edf3;
+    --muted: #8b949e; --accent: #58a6ff; --ok: #3fb950; --warn: #d29922; --bad: #f85149;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+  .wrap { max-width: 1020px; margin: 0 auto; padding: 20px 16px 48px; }
+  header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 10px; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 18px; }
+  h1 { margin: 0; font-size: 1.25rem; font-weight: 700; letter-spacing: -0.01em; }
+  .badge { font-size: 0.75rem; color: var(--ok); border: 1px solid #245c30; background: #102616; padding: 2px 8px; border-radius: 999px; }
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .tab { background: var(--card); border: 1px solid var(--border); color: var(--muted); padding: 7px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.88rem; }
+  .tab.active { color: var(--text); border-color: var(--accent); background: #152233; }
+  .panel { display: none; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .panel.active { display: block; }
+  label { display: block; font-size: 0.82rem; color: var(--muted); margin-bottom: 6px; }
+  textarea, input, select { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 9px 10px; font-family: var(--mono); font-size: 0.84rem; }
+  textarea { min-height: 92px; resize: vertical; }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-top: 10px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  button.btn { background: var(--accent); color: #081018; border: 0; padding: 8px 14px; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 0.86rem; }
+  button.btn.sec { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  pre { background: #090c10; border: 1px solid var(--border); border-radius: 8px; padding: 12px; overflow-x: auto; font-family: var(--mono); font-size: 0.8rem; margin: 12px 0 0; white-space: pre-wrap; word-break: break-all; }
+  .status { margin-top: 10px; font-size: 0.85rem; font-weight: 600; }
+  .status.ok { color: var(--ok); }
+  .status.bad { color: var(--bad); }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 0.82rem; }
+  th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; font-family: var(--mono); word-break: break-all; }
+  th { background: #10151c; color: var(--muted); font-family: system-ui, sans-serif; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Crypto Ops Inspector</h1>
+    <span class="badge">100% Offline &middot; Zero Dependencies &middot; Client-Side</span>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="single">Auto Inspector (EVM / SOL / BOLT-11 / x402)</button>
+    <button class="tab" data-tab="batch">Batch Validator</button>
+    <button class="tab" data-tab="utxo">Bitcoin UTXO Fee Planner</button>
+  </div>
+
+  <div id="tab-single" class="panel active">
+    <label for="singleInput">Paste EVM address, ERC-20 / EIP-3009 hex calldata, Solana pubkey, BOLT-11 invoice, or Base64 x402 payload</label>
+    <textarea id="singleInput" placeholder="0x217Ad83F7E0Cae8CE48a678cF0A1229b302aD28d"></textarea>
+    <div class="row">
+      <div>
+        <label for="singleDecimals">Token Decimals (for calldata / x402)</label>
+        <input id="singleDecimals" type="number" min="0" max="18" value="6">
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="btnInspect">Inspect</button>
+      <button class="btn sec" data-sample="evm">Sample EVM</button>
+      <button class="btn sec" data-sample="calldata">Sample ERC-20 Calldata</button>
+      <button class="btn sec" data-sample="sol">Sample Solana</button>
+      <button class="btn sec" data-sample="bolt11">Sample BOLT-11</button>
+      <button class="btn sec" data-sample="x402">Sample x402</button>
+      <button class="btn sec" id="btnCopyJson">Copy JSON</button>
+    </div>
+    <div id="singleStatus" class="status"></div>
+    <pre id="singleOut">{}</pre>
+  </div>
+
+  <div id="tab-batch" class="panel">
+    <label for="batchInput">One item per line (mixed EVM addresses, Solana pubkeys, BOLT-11 invoices, calldata)</label>
+    <textarea id="batchInput" placeholder="0x217Ad83F7E0Cae8CE48a678cF0A1229b302aD28d&#10;5SjX65iqeVQAmnoM3wuZfP9rXxrDFnwMNJc8o7ZVNZg1"></textarea>
+    <div class="actions">
+      <button class="btn" id="btnBatch">Run Batch Check</button>
+    </div>
+    <div id="batchSummary" class="status"></div>
+    <div id="batchTableWrap"></div>
+  </div>
+
+  <div id="tab-utxo" class="panel">
+    <div class="row">
+      <div>
+        <label for="utxoCount">Input UTXO Count</label>
+        <input id="utxoCount" type="number" min="1" value="12">
+      </div>
+      <div>
+        <label for="utxoSats">Total Input Value (sats)</label>
+        <input id="utxoSats" type="number" min="0" value="50000">
+      </div>
+      <div>
+        <label for="utxoType">Input Script Type</label>
+        <select id="utxoType">
+          <option value="p2wpkh" selected>Native SegWit (P2WPKH ~68 vB)</option>
+          <option value="p2tr">Taproot (P2TR ~57.5 vB)</option>
+          <option value="p2sh-p2wpkh">Nested SegWit (P2SH-P2WPKH ~91 vB)</option>
+          <option value="p2pkh">Legacy (P2PKH ~148 vB)</option>
+        </select>
+      </div>
+      <div>
+        <label for="utxoRate">Fee Rate (sat/vB)</label>
+        <input id="utxoRate" type="number" min="0" step="0.1" value="5">
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="btnUtxo">Calculate Breakeven</button>
+    </div>
+    <pre id="utxoOut">{}</pre>
+  </div>
+</div>
+
+<script>
+/* __INSPECTOR_CORE__ */
+
+const SAMPLES = {
+  evm: '0x217Ad83F7E0Cae8CE48a678cF0A1229b302aD28d',
+  calldata: '0xa9059cbb000000000000000000000000217ad83f7e0cae8ce48a678cf0a1229b302ad28d00000000000000000000000000000000000000000000000000000000002dc6c0',
+  sol: '5SjX65iqeVQAmnoM3wuZfP9rXxrDFnwMNJc8o7ZVNZg1',
+  bolt11: '__SAMPLE_BOLT11__',
+  x402: '__SAMPLE_X402__'
+};
+
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+function runSingle() {
+  const raw = document.getElementById('singleInput').value;
+  const dec = Number(document.getElementById('singleDecimals').value || 6);
+  const st = document.getElementById('singleStatus');
+  const out = document.getElementById('singleOut');
+  try {
+    const res = autoInspect(raw, dec);
+    st.className = 'status ok';
+    st.textContent = 'Decoded: ' + res.type;
+    out.textContent = JSON.stringify(res, null, 2);
+  } catch (e) {
+    st.className = 'status bad';
+    st.textContent = 'Error: ' + e.message;
+    out.textContent = JSON.stringify({ ok: false, error: e.message }, null, 2);
+  }
+}
+
+document.getElementById('btnInspect').addEventListener('click', runSingle);
+document.querySelectorAll('[data-sample]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.getElementById('singleInput').value = SAMPLES[btn.dataset.sample];
+    runSingle();
+  });
+});
+document.getElementById('btnCopyJson').addEventListener('click', () => {
+  navigator.clipboard?.writeText(document.getElementById('singleOut').textContent);
+});
+
+document.getElementById('btnBatch').addEventListener('click', () => {
+  const rows = batchInspect(document.getElementById('batchInput').value, Number(document.getElementById('singleDecimals').value || 6));
+  const okCount = rows.filter(r => r.ok).length;
+  const sum = document.getElementById('batchSummary');
+  sum.className = 'status ' + (okCount === rows.length ? 'ok' : 'bad');
+  sum.textContent = `Processed ${rows.length} lines: ${okCount} valid, ${rows.length - okCount} invalid`;
+  const wrap = document.getElementById('batchTableWrap');
+  wrap.textContent = '';
+  if (!rows.length) return;
+  const tbl = document.createElement('table');
+  const thead = document.createElement('thead');
+  const htr = document.createElement('tr');
+  ['#', 'Status', 'Type', 'Summary'].forEach(h => {
+    const th = document.createElement('th');
+    th.textContent = h;
+    htr.appendChild(th);
+  });
+  thead.appendChild(htr);
+  tbl.appendChild(thead);
+  const tbody = document.createElement('tbody');
+  for (const r of rows) {
+    const tr = document.createElement('tr');
+    const c1 = document.createElement('td'); c1.textContent = r.line;
+    const c2 = document.createElement('td'); c2.textContent = r.ok ? 'VALID' : 'ERR'; c2.style.color = r.ok ? 'var(--ok)' : 'var(--bad)';
+    const c3 = document.createElement('td'); c3.textContent = r.ok ? r.result.type : '-';
+    const c4 = document.createElement('td'); c4.textContent = r.ok ? JSON.stringify(r.result) : r.error;
+    tr.append(c1, c2, c3, c4);
+    tbody.appendChild(tr);
+  }
+  tbl.appendChild(tbody);
+  wrap.appendChild(tbl);
+});
+
+function runUtxo() {
+  const res = calcUtxoConsolidation({
+    utxoCount: Number(document.getElementById('utxoCount').value),
+    totalInputSats: Number(document.getElementById('utxoSats').value),
+    inputType: document.getElementById('utxoType').value,
+    feeRateSatVb: Number(document.getElementById('utxoRate').value),
+  });
+  document.getElementById('utxoOut').textContent = JSON.stringify(res, null, 2);
+}
+document.getElementById('btnUtxo').addEventListener('click', runUtxo);
+runUtxo();
+</script>
+</body>
+</html>
