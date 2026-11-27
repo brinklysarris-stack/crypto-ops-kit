@@ -16,3 +16,9 @@ node build.mjs
 node --test inspector-core.test.mjs
 ```
 Open `index.html` directly in any browser (`file://`) or serve statically.
+
+## Commercial Bundle & 24h Custom Services (RMB Instant Checkout)
+Need commercial support, custom chain decoders, or 24-hour Node.js/Python automation scripts?
+- **Live Interactive Utility**: <https://brinklysarris-stack.github.io/crypto-ops-kit/>
+- **Afdian Storefront (Instant Auto-Delivery & 24h Custom Order)**: <https://afdian.com/a/daringotter> (`¥20.00 Commercial Pack + Tech Q&A` · `¥29.90 24h Custom Script`)
+- **Direct Contact**: <mailto:brinklysarris@gmail.com>
